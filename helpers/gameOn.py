@@ -1,5 +1,3 @@
-
-
 from helpers.bbUtils import *
 import requests
 import requests_cache
@@ -52,11 +50,56 @@ def getScrollingWebsite(url: str):
     return page_source
 
 
-gon = getScrollingWebsite(
-    "https://www.game-on.no/categories/softgun-kuler-gass-og-diverse?categories%5B%5D=1785&priceLow=53&priceHigh=3799&sort=products_sort_order-asc&filter_by_host=")
+class GameOn(StoreFront):
+    storeName: str
+    urls: list[str]
 
-soup = BeautifulSoup(gon, 'html.parser')
+    def __init__(self):
+        return super().__init__("GameOn", [
+            "https://www.game-on.no/categories/softgun-kuler-gass-og-diverse?categories%5B%5D=1785&priceLow=53&priceHigh=3799&sort=products_sort_order-asc&filter_by_host=",
+            "https://www.game-on.no/categories/softgun-kuler-gass-og-diverse?categories%5B%5D=1786&priceLow=53&priceHigh=3799&sort=products_sort_order-asc&filter_by_host=",
+            "https://www.game-on.no/categories/softgun-kuler-gass-og-diverse?categories%5B%5D=1783&priceLow=53&priceHigh=3799&sort=products_sort_order-asc&filter_by_host=",
+            "https://www.game-on.no/categories/softgun-kuler-gass-og-diverse?categories%5B%5D=1784&priceLow=53&priceHigh=3799&sort=products_sort_order-asc&filter_by_host="
+        ])
 
-results = soup.findAll("div", class_="product_box_title_row text-center")
+    def getProductPages(self) -> {list[BeautifulSoup]}:
+        soups = []
+        for url in self.urls:
+            gon = getScrollingWebsite(url)
+            soup = BeautifulSoup(gon, 'html.parser')
+            soups.append(soup)
+            print(f"Got Product Page {url}")
+        return soups
 
-print(results)
+    def getProductSoupLinkList(self, soups: list[BeautifulSoup]) -> {list[BeautifulSoup], list[str]}:
+        productLinks = []
+        productSoups = []
+        for soup in soups:
+            results = soup.findAll(
+                "div", class_="product_box_title_row text-center")
+            for div in results:
+                child = div.find("a")
+                pageUrl = child.get('href')
+                productLinks.append(pageUrl)
+                print(f"Got Product Link {pageUrl}")
+
+            for link in productLinks:
+                page = requests.get(link, headers=header)
+                soup = BeautifulSoup(page.content, 'html.parser')
+                productSoups.append(soup)
+                print(f"Got Product Soup {link}")
+        return productSoups, productLinks
+
+    def getProductName(self, soup: BeautifulSoup) -> str:
+        return soup.find("h1", class_="product-title-v1").text
+
+    def getProductPrice(self, soup: BeautifulSoup) -> float:
+        return textToPrice(soup.find("span", class_="product-price products_price").text)
+
+    def getProductDescription(self, soup: BeautifulSoup) -> str:
+        description = soup.find("div", id="collapse-A")
+        texts = description.find_all(text=True)
+        desc = ""
+        for item in texts:
+            desc += item
+        return desc

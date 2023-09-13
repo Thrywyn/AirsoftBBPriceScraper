@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 from bs4 import BeautifulSoup
-from helpers.bbUtils import *
 
+from helpers.bbUtils import *
+from bs4 import BeautifulSoup
 
 
 class StoreFront(ABC):
@@ -37,7 +38,7 @@ class StoreFront(ABC):
         return textToWeight(self.getProductName(soup))
 
     def getProductBio(self, soup: BeautifulSoup) -> bool:
-        return textToBio(self.getProductDescription(soup))
+        return textToBio(self.getProductDescription(soup)) or textToBio(self.getProductName(soup))
 
     def getProductAmount(self, soup: BeautifulSoup) -> int:
         try:
